@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+        integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="/css/style.css">
+    <title>Youtube to mp3 converter</title>
+</head>
+
+<body>
+    <div class="top-container">
+        <form action="/convert-mp3" method="POST" id="form">
+            <h1>Youtube to mp3 converter <i class="fa-brands fa-youtube"></i></h1>
+            <h4>enter the video id</h4>
+            <div id="form_container">
+                <div id="top_part">
+                    <input type="text" name="desName" id="nameID" placeholder="Titolo desiderato">
+                    <select name="quality" id="quality_selector">
+                        <option value="64">64</option>
+                        <option value="128" selected>128</option>
+                        <option value="192">192</option>
+                        <option value="256">256</option>
+                        <option value="320">320</option>
+                        <option value="default">default</option>
+                    </select>
+                </div>
+                <div id="bottom_part">
+                    <input type="text" name="videoId" id="videoId" placeholder="video id to change">
+                    <button id="convert-btn">Convert</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="bottom-container">
+        <% if (typeof success !="undefined" && success) { %>
+            <div class="success">
+                <p>
+                    <%= uniqueid %>
+                </p>
+                <a href="<%= song_link %>"><button id="download_btn">DOWNLOAD</button></a>
+            </div>
+            <% } else if (typeof success !="undefined" && !success) { %>
+                <div class="errors">
+                    <p>
+                        <%= message %>
+                    </p>
+                </div>
+                <% } %>
+    </div>
+</body>
+
+</html>
