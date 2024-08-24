@@ -1,7 +1,11 @@
+
 // req packages
+
 const express = require("express");
 const fetch = require("node-fetch");
 require("dotenv").config();
+const { searchToUrl } = require("./utils/searchToUrl");
+const { convertYouTubeURL } = require("./utils/convertYouTubeURL");
 
 // create express server
 const app = express();
@@ -26,32 +30,6 @@ app.get("/", (req, res) => {
 })
 
 
-function convertYouTubeURL(url) {
-    // Trova l'indice in cui inizia "youtube"
-    const youtubeIndex = url.indexOf('youtube');
-
-    // Se "youtube" non è presente nell'URL, ritorna null o un messaggio di errore
-    if (youtubeIndex === -1) {
-        return null; // O un messaggio di errore: return "URL non valido";
-    }
-
-    // Mantieni solo la parte dell'URL che inizia con "youtube"
-    let cleanUrl = url.substring(youtubeIndex);
-
-    // Rimuovi tutto dopo e incluso il carattere '%'
-    const percentIndex = cleanUrl.indexOf('%');
-    if (percentIndex !== -1) {
-        cleanUrl = cleanUrl.substring(0, percentIndex);
-    }
-
-    // Aggiungi "youtube.com" all'inizio se necessario
-    if (!cleanUrl.startsWith('youtube.com')) {
-        cleanUrl = 'youtube.com/' + cleanUrl.substring(cleanUrl.indexOf('/') + 1);
-    }
-
-    return cleanUrl;
-}
-
 
 app.get('/download', async (req, res) => {
     const fileUrl = req.query.url; // External download link
@@ -70,53 +48,64 @@ app.get('/download', async (req, res) => {
         response.body.pipe(res);
     } catch (error) {
         console.error('Error during file download:', error);
-        res.status(500).send('Error downloading file');
     }
 });
 
 app.post("/convert-mp3", async (req, res) => {
-    const videoId = convertYouTubeURL(req.body.videoId);
-    const desName = req.body.desName ? req.body.desName.trim() : '';  // Trim any extra whitespace
-    const quality = req.body.quality && req.body.quality !== 'default' ? req.body.quality : '320';
+    // no data found
+    if (!req.body.desName) {
+        return res.render("index", { success: false, message: "CIANFRY, insert a valid name" });
+    }
+
+    let videoLink = req.body.videoId;
+
+    if (req.body.desName && !videoLink) {
+        videoLink = await searchToUrl(req.body.desName);
+        if (!videoLink) {
+            return res.render("index", { success: false, message: "No video found with that name." });
+        }
+
+    }
+
+    let videoId = convertYouTubeURL(videoLink);
 
     if (!videoId) {
-        return res.render("index", { success: false, message: "Please enter a video ID" });
-    } else {
-        const apiUrl = `https://youtube-mp3-downloader2.p.rapidapi.com/ytmp3/ytmp3/custom/?url=${videoId}&quality=${quality}&name=${desName}`;
-        console.log(`Fetching: ${apiUrl}`);
+        return res.render("index", { success: false, message: "Please enter a video ID or search term." });
+    }
 
-        try {
-            const fetchAPI = await fetch(apiUrl, {
-                "method": "GET",
-                "headers": {
-                    'x-rapidapi-key': process.env.API_KEY,
-                    'x-rapidapi-host': process.env.API_HOST
-                }
-            });
 
-            const fetchResponse = await fetchAPI.json();
-            console.log('fetchResponse:', fetchResponse);
+    const quality = req.body.quality && req.body.quality !== 'default' ? req.body.quality : '320';
+    const apiUrl = `https://youtube-mp3-downloader2.p.rapidapi.com/ytmp3/ytmp3/custom/?url=${videoId}&quality=${quality}&name=${req.body.desName ? req.body.desName.trim() : ''}`;
 
-            if (fetchResponse.status === "finished") {
-                const finalDesName = desName || fetchResponse.uniqueid;  // Use desName or fallback to uniqueid
-                const sanitizedDesName = finalDesName.replace(/[^a-z0-9_\-]/gi, '_'); // Sanitize the name
-
-                // Pass the dlink and desired filename to the download route
-                return res.render('index', {
-                    success: true,
-                    uniqueid: finalDesName,
-                    song_link: `/download?url=${encodeURIComponent(fetchResponse.dlink)}&filename=${encodeURIComponent(sanitizedDesName)}.mp3`
-                });
-            } else {
-                return res.render('index', {
-                    success: false,
-                    message: fetchResponse.msg
-                });
+    try {
+        const fetchAPI = await fetch(apiUrl, {
+            "method": "GET",
+            "headers": {
+                'x-rapidapi-key': process.env.API_DOWNLOAD_KEY,
+                'x-rapidapi-host': process.env.API_DOWNLOAD_HOST
             }
-        } catch (error) {
-            console.error("Error fetching data:", error);
-            return res.render('index', { success: false, message: "An error occurred while processing your request." });
+        });
+
+        const fetchResponse = await fetchAPI.json();
+        console.log(fetchResponse);
+        if (fetchResponse.status === "finished") {
+            const finalDesName = (req.body.desName ? req.body.desName.trim() : '') || fetchResponse.uniqueid;
+            const sanitizedDesName = finalDesName.replace(/[^a-z0-9_\-]/gi, '_');
+
+            return res.render('index', {
+                success: true,
+                uniqueid: finalDesName,
+                song_link: `/download?url=${encodeURIComponent(fetchResponse.dlink)}&filename=${encodeURIComponent(sanitizedDesName)}.mp3`
+            });
+        } else {
+            return res.render('index', {
+                success: false,
+                message: fetchResponse.msg
+            });
         }
+    } catch (error) {
+        console.error("Error fetching data:", error);
+        return res.render('index', { success: false, message: "CIANFRY, HAI SBAGLIATO L'URL CAZZO" });
     }
 });
 
