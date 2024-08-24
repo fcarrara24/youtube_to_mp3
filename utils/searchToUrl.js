@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 async function searchToUrl(query) {
     const url = 'https://google-api-unlimited.p.rapidapi.com/yt_search';
     const data = new FormData();
@@ -7,8 +9,8 @@ async function searchToUrl(query) {
     const options = {
         method: 'POST',
         headers: {
-            'x-rapidapi-key': 'd5dc78002dmsha21b667e587ff64p1e234fjsnb10724403a00',
-            'x-rapidapi-host': 'google-api-unlimited.p.rapidapi.com'
+            'x-rapidapi-key': process.env.API_SEARCH_KEY,
+            'x-rapidapi-host': process.env.API_SEARCH_HOST
         },
         body: data
     };
